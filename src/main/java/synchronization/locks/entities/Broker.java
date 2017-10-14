@@ -3,12 +3,16 @@ package synchronization.locks.entities;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Броккер, который берет пустые квартиры в домах и создает для них семьи
+ */
 public class Broker implements Runnable {
-    private final List<House> houses;
+    private final List<House> houses;       // список домов, с которыми работает брокер
 
     public Broker(House... houses) {
+        // трансформируем массив с параметрами (дома, с которыми должен работать брокер) в список
         this.houses = Arrays.asList(houses);
-        new Thread(this).start();
+        new Thread(this).start();       // запускаем брокера в работу
     }
 
     @Override

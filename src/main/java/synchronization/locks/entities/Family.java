@@ -2,7 +2,6 @@ package synchronization.locks.entities;
 
 import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.Setter;
 import synchronization.locks.utils.Logger;
 
 import java.util.Arrays;
@@ -11,16 +10,12 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
+/**
+ * Класс семей, которые будут жить в квартирах в домах.
+ */
 @Getter
 public class Family implements Runnable {
-    private String name;
-    private List<Person> members;
-    @Setter
-    private Flat flat;
-
-    private Logger log = Logger.getInstance();
-
-    @Getter(AccessLevel.NONE)
+    @Getter(AccessLevel.NONE)                       // и тут тоже
     public static final String[] SURNAMES = {"Абрамов", "Авдеев", "Агапов", "Агафонов", "Агеев",
             "Акимов", "Аксенов", "Александров", "Алексеев", "Алехин", "Алешин", "Ананьев", "Андреев",
             "Андрианов", "Аникин", "Анисимов", "Анохин", "Антипов", "Антонов", "Артамонов", "Артемов",
@@ -85,50 +80,88 @@ public class Family implements Runnable {
             "Чижов", "Чистяков", "Чумаков", "Шаповалов", "Шапошников", "Шаров", "Швецов", "Шевелев",
             "Шевцов", "Шестаков", "Шилов", "Широков", "Ширяев", "Шишкин", "Шмелев", "Шубин", "Шувалов",
             "Шульгин", "Щеглов", "Щербаков", "Щукин", "Юдин", "Яковлев", "Яшин"};
-
+    @Getter(AccessLevel.NONE)
     private static long LATENCY = 100;
+    private String name;                            // фамилия семьи
+    private List<Person> members;                   // список членов семьи
+    private Flat flat;                              // квартира, в которой семья живет
+    @Getter(AccessLevel.NONE)                       // тут геттер не нужен
+    private Logger log = Logger.getInstance();
+
+    /**
+     * Конструктор для семьи
+     *
+     * @param name    фамилия семьи
+     * @param members члены семьи
+     */
+    public Family(String name, Person... members) {
+        // устанавливаем фамилию
+        this.name = name;
+
+        // если переданный параметр не пуст
+        if (members != null && members.length > 0) {
+            // трансформируем массив к списку и на основе его создаем новый список для членов семьи
+            this.members = new LinkedList<>(Arrays.asList(members));
+        } else {
+            // если же не передали ни одного жильца - создаем пустой список
+            this.members = new LinkedList<>();
+        }
+        log.write("Создана " + this);
+        //new Thread(this).start();       // запускаем семью
+    }
 
     static void setLATENCY(long latency) {
         LATENCY = latency;
     }
 
-    public Family(String name, Person... members) {
-        this.name = name;
-        if (members != null && members.length > 0) {
-            this.members = new LinkedList<>(Arrays.asList(members));
-        } else {
-            this.members = new LinkedList<>();
-        }
-        log.write("Создана " + this);
-        new Thread(this).start();
-    }
-
+    /**
+     * Фабричный метод для создания случайной семьи
+     *
+     * @return объект созданной семьи
+     */
     public static Family generateFamily() {
         Random rnd = new Random();
+
+        // выбираем случайную фамилию
         String familyName = SURNAMES[(int) (Math.random() * SURNAMES.length)];
+
+        // создаем список членов семьи
         List<Person> members = new LinkedList<>();
+        // добавляем первого (взрослый, без разницы какого пола)
         members.add(Person.generatePerson(familyName, true, null));
+        // пока нам будет везти - будем создавать еще членов семьи (абсолютно случайных)
         while (rnd.nextBoolean()) {
             members.add(Person.generatePerson(familyName, rnd.nextBoolean(), rnd.nextBoolean()));
         }
+
+        // создаем и возвращаем объект семьи из определенных выше данных
         return new Family(familyName, members.toArray(new Person[members.size()]));
     }
 
+    /**
+     * Позволяет назначить этой семье квартиру
+     * @param flat квартира, в которой будет жить семья
+     */
     public synchronized void setFlat(Flat flat) {
         this.flat = flat;
     }
 
+    /**
+     * Позволяет добавить нового члена семьи
+     * @param member новый член семьи
+     */
     public void addMember(Person member) {
-        member.setLastName(name);
-        members.add(member);
+        member.setLastName(name);           // переписываем ему фамилию той, которая является фамилией семьи
+        members.add(member);                // добавляем к списку членов семьи
     }
 
-    public double getIncomePerMember() {
-        synchronized (this) {
-            final double[] income = {0};
-            members.forEach((p) -> income[0] += p.getIncome());
-            return income[0] / (double) members.size();
-        }
+    /**
+     * Подсчет уровня дохода на каждого члена семьи
+     *
+     * @return уровень дохода
+     */
+    public synchronized double getIncomePerMember() {
+        return members.stream().collect(Collectors.averagingDouble(Person::getIncome));
     }
 
     @Override
@@ -143,52 +176,84 @@ public class Family implements Runnable {
 
     @Override
     public void run() {
+        // фиксируем ссылку на тред, который сейчас крутит этот метод
         final Thread thisThread = Thread.currentThread();
-        // waiting for giving the flat
+
+        // ждем пока семью не поселят в квартиру
         while (flat == null && !thisThread.isInterrupted()){
             try {
                 Thread.sleep(LATENCY);
             } catch (InterruptedException e) {
-                e.printStackTrace();
                 thisThread.interrupt();
             }
         }
 
-        // starts living
+        // начинаем жить в квартире
         while (members.size() > 0 && !thisThread.isInterrupted()) {
             try {
                 Thread.sleep(LATENCY);
             } catch (InterruptedException e) {
-                e.printStackTrace();
                 thisThread.interrupt();
             }
+
+            // убираем из семьи умерших людей
             members.forEach((p) -> {
                 if (!p.isAlive()) members.remove(p);
             });
-            if (isAlive() && members.size() < flat.getRoomsNumber()) makeBaby();
+
+            // если семья жива и для нового человека есть свободная комната в квартире
+            if (isAlive() && members.size() < flat.getRoomsNumber())
+                makeBaby();     // пытаемся завести ребенка
         }
+
+        // если мы дошли до этого места и тред еще не остановлен - значит не осталось ни одного живого члена семьи
         if (!thisThread.isInterrupted()) {
-            flat = null;
+            flat = null;        // освобождаем жилплощадь
             log.write(this + " полностью вымерла.");
         }
     }
 
+    /**
+     * Проверяет жива ли семья. Если в семье более одного жильца - значит она жива
+     * @return true если в семье есть хотя бы один член, false если все умерли
+     */
     private synchronized boolean isAlive() {
         return members.size() > 0;
     }
 
+    /**
+     * Позволяет завести семье ребенка
+     */
     private void makeBaby() {
-        boolean hasMale = false, hasFemale = false;
+        // флаги, обозначающие есть ли в семье мужчина и женщина
+        final boolean[] hasMaleOrFemale = {false, false};
+
         synchronized (this) {
             List<Person> parents = members.stream()
-                    .filter((p) -> p.getAge() > 18 && p.getAge() < 60)
-                    .sorted()
-                    .filter(person -> person.getSex() == Person.Sex.MALE && !hasMale
-                            || person.getSex() == Person.Sex.FEMALE && !hasFemale)
-                    .collect(Collectors.toList());
+                    .filter((p) -> p.getAge() >= 18 && p.getAge() <= 60)  // отбираем членов семьи подходящих по возрасту
+                    .filter(person -> {
+                        if (person.getSex() == Person.Sex.MALE && !hasMaleOrFemale[0]) {
+                            // если этот человек мужчина и у нас еще не было мужчин - отмечаем что нашли мужчину
+                            hasMaleOrFemale[0] = true;
+                            // и возвращаем true чтоб этот мужчина попал в новый список
+                            return true;
+                        }
+                        if (person.getSex() == Person.Sex.FEMALE && !hasMaleOrFemale[1]) {
+                            // если этот человек женщина и у нас еще не было женщин - отмечаем что нашли женщину
+                            hasMaleOrFemale[1] = true;
+                            // и возвращаем true чтоб эта женщина попала в новый список
+                            return true;
+                        }
 
+                        return false;       // в остальных случаях возвращаем false
+                    })
+                    .collect(Collectors.toList());      // собираем результаты в список
+
+            // если список с возможными родителями состоит из двух людей (мужчина и женщина)
+            // и их разница в возрасте не более чем 15 лет
             if (parents.size() == 2
                     && Math.abs(parents.get(0).getAge() - parents.get(1).getAge()) <= 15) {
+                // создаем нового члена семьи и добавляем его к существующим членам
                 this.members.add(Person.generatePerson(name, false, null));
             }
         }

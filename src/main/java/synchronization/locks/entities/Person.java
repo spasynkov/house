@@ -1,22 +1,20 @@
 package synchronization.locks.entities;
 
+import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import synchronization.locks.utils.Logger;
 
 import java.util.Random;
 
-@Getter
+/**
+ * Класс людей, которые будут жить в домах
+ */
+@Getter                 // сгенерировать геттеры для всех полей
+@EqualsAndHashCode      // сгенерировать equals() и hashCode()
 public class Person implements Runnable, Comparable<Person> {
-    private String firstName;
-    private String lastName;
-    private byte age;
-    private Sex sex;
-    private boolean isAlive;
-
-    private double income;
-
-    private Logger log = Logger.getInstance();
-
+    // мужские имена
+    @Getter(AccessLevel.NONE)
     private static final String[] MALE_NAMES = {"Абрам", "Аваз", "Августин", "Авраам", "Агап", "Агапит",
             "Агафон", "Адам", "Адриан", "Азамат", "Азат", "Айдар", "Айрат", "Акакий", "Аким", "Алан",
             "Александр", "Алексей", "Али", "Алик", "Алихан", "Алмаз", "Альберт", "Амир", "Амирам",
@@ -56,6 +54,8 @@ public class Person implements Runnable, Comparable<Person> {
             "Чингиз", "Шамиль", "Шарль", "Шерлок", "Эдгар", "Эдуард", "Эльдар", "Эмиль", "Эмин", "Эрик",
             "Эркюль", "Эрмин", "Эузебио", "Юлиан", "Юлий", "Юнус", "Юрий", "Юстиниан", "Юстус", "Яков",
             "Ян", "Яромир", "Ярослав"};
+    // женские имена
+    @Getter(AccessLevel.NONE)
     private static final String[] FEMALE_NAMES = {"Августа", "Августина", "Авдотья", "Аврора", "Агапия",
             "Агата", "Агафья", "Аглая", "Агния", "Агунда", "Ада", "Аделаида", "Аделина", "Адель",
             "Адиля", "Адриана", "Аза", "Азалия", "Азиза", "Аида", "Аиша", "Айгерим", "Айгуль", "Айлин",
@@ -103,31 +103,18 @@ public class Person implements Runnable, Comparable<Person> {
             "Элла", "Эльвина", "Эльвира", "Эльмира", "Эльнара", "Эля", "Эмили", "Эмилия", "Эмма", "Энже",
             "Эрика", "Эрмина", "Эсмеральда", "Эсмира", "Этель", "Этери", "Юлианна", "Юлия", "Юна",
             "Юния", "Юнона", "Ядвига", "Яна", "Янина", "Ярина", "Ярослава", "Ясмина"};
-
+    // задержка. сколько милисекунд тред будет спать
+    @Getter(AccessLevel.NONE)
     private static long LATENCY = 100;
-
-    static void setLATENCY(long latency) {
-        LATENCY = latency;
-    }
-
-    public static Person generatePerson(String surname, boolean isAdult, Boolean isFemale) {
-        Random rnd = new Random();
-        Sex sex = isFemale == null ?
-                (rnd.nextBoolean() ? Sex.FEMALE : Sex.MALE)
-                : isFemale ? Sex.FEMALE : Sex.MALE;
-        String name;
-        if (sex == Sex.FEMALE) {
-            name = FEMALE_NAMES[(int) (Math.random() * FEMALE_NAMES.length)];
-        } else {
-            name = MALE_NAMES[(int) (Math.random() * MALE_NAMES.length)];
-        }
-        String rightSurname = sex == Sex.FEMALE ? surname.endsWith("ий")
-                ? surname.substring(0, surname.lastIndexOf("ий")) + "ая"
-                : surname + "а" : surname;
-        byte age = (byte) ((isAdult ? 18 : 0) + Math.random() * (isAdult ? 42 : 18));
-        double income = Math.random() * 1000;
-        return new Person(name, rightSurname, age, sex, income);
-    }
+    private String firstName;       // имя
+    private String lastName;        // фамилия
+    private byte age;               // возраст
+    private Sex sex;                // пол
+    private boolean isAlive;        // жив ли человек
+    private double income;          // заработок
+    // получаем логгер
+    @Getter(AccessLevel.NONE)       // нет необходимости создавать геттер для этого поля
+    private Logger log = Logger.getInstance();
 
     public Person(String firstName, String lastName, int age, Sex sex, double income) {
         this.firstName = firstName;
@@ -136,10 +123,58 @@ public class Person implements Runnable, Comparable<Person> {
         this.sex = sex;
         this.income = this.age < 18 ? 0 : income;
         this.isAlive = true;
-        new Thread(this).start();
+        new Thread(this).start();               // начинаем жить
         log.write("Человек создан: " + this);
     }
 
+    // сеттер для задержки
+    static void setLATENCY(long latency) {
+        LATENCY = latency;
+    }
+
+    /**
+     * Фабричный метод для создания случайного человека, учитывая параметры
+     *
+     * @param surname  фамилия человека
+     * @param isAdult  создавать ли взрослого. true - будет создан взрослый, false - ребенок
+     * @param isFemale создавать ли женщину/мужчину. true - будет создана женщина, false - мужчина, null - без разницы
+     * @return созданый объект человека
+     */
+    public static Person generatePerson(String surname, boolean isAdult, Boolean isFemale) {
+        Random rnd = new Random();
+
+        // проверяем параметр isFemale и исходя из его значения выбираем пол
+        Sex sex = isFemale == null ?
+                (rnd.nextBoolean() ? Sex.FEMALE : Sex.MALE)
+                : isFemale ? Sex.FEMALE : Sex.MALE;
+        // выбираем имя для человека в зависимости от его пола (случайным образом из списка)
+        String name;
+        if (sex == Sex.FEMALE) {
+            name = FEMALE_NAMES[(int) (Math.random() * FEMALE_NAMES.length)];
+        } else {
+            name = MALE_NAMES[(int) (Math.random() * MALE_NAMES.length)];
+        }
+
+        // определяем фамилию человека с правильным суффиксом в зависимости от пола
+        String rightSurname = sex == Sex.FEMALE ? surname.endsWith("ий")
+                ? surname.substring(0, surname.lastIndexOf("ий")) + "ая"
+                : surname + "а" : surname;
+
+        // определяем возраст для нового человека в зависимости от переданого параметра isAdult
+        byte age = (byte) ((isAdult ? 18 : 0) + Math.random() * (isAdult ? 42 : 18));
+
+        // определяем доход человека случайным образом
+        double income = Math.random() * 1000;
+
+        // возвращаем оъект человека со всеми указанными параметрами
+        return new Person(name, rightSurname, age, sex, income);
+    }
+
+    /**
+     * Устанавливает фамилию с правильным суффиксом
+     *
+     * @param lastName фамилия
+     */
     public void setLastName(String lastName) {
         this.lastName = sex == Sex.FEMALE ? lastName.endsWith("ий")
                 ? lastName.substring(0, lastName.lastIndexOf("ий")) + "ая"
@@ -148,34 +183,56 @@ public class Person implements Runnable, Comparable<Person> {
 
     @Override
     public void run() {
+        // пока человек жив и пока этот тред не прерван
         while (isAlive && !Thread.currentThread().isInterrupted()) {
+            // спим
             try {
                 Thread.sleep(LATENCY);
             } catch (InterruptedException e) {
+                // если словили этот иксепшен, значит тред пытались остановить. поэтому устанавливаем нужный флаг
                 Thread.currentThread().interrupt();
             }
+            // прошел год
             age++;
+
+            // если человек взрослый - то корректируем его доход случайным образом (может быть уменьшен или увеличен)
             if (age >= 18) income += -0.5 + Math.random() * 2;
 
+            // если постарев человек умер - выходим из цикла
             if (isDied()) break;
         }
 
-        isAlive = false;
+        isAlive = false;        // ставим флаг, что этот человек больше не жилец
         log.write(this + " умер" + (sex==Sex.MALE ? "." : "ла."));
 
     }
 
+    /**
+     * Проверяет не пора ли человеку умереть
+     * @return true - если человеку суждено умереть, false - пусть еще поживет
+     */
     private boolean isDied() {
-        int minDieAge = 60;
-        int maxDieAge = 100;
+        int minDieAge = 60;         // минимальный возраст смерти
+        int maxDieAge = 100;        // максимальный возраст жизни
+
+        // если возраст текущего человека перевалил за случайны возраст жизни и смерти - возвращаем true
         return this.age >= minDieAge + Math.random() * (maxDieAge - minDieAge);
     }
 
+    /**
+     * Определяем строковое представление объекта человека
+     * @return строковое представление человека
+     */
     @Override
     public String toString() {
         return firstName + " " + lastName + " (" + sex + ", возраст: " + age + ")";
     }
 
+    /**
+     * Правило сравнения людей по умолчанию
+     * @param o другой человек
+     * @return возращает число насколько этот человек должен стоять выше чем переданный
+     */
     @Override
     public int compareTo(Person o) {
         return this.isAlive() && o.isAlive()
@@ -183,6 +240,9 @@ public class Person implements Runnable, Comparable<Person> {
                 : this.isAlive() ? Integer.MAX_VALUE : Integer.MIN_VALUE;
     }
 
+    /**
+     * Пол человека (женский или мужской)
+     */
     public enum Sex {
         FEMALE,
         MALE
